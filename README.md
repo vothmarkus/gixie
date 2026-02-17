@@ -26,7 +26,30 @@ clock.
 
 ------------------------------------------------------------------------
 
-## Installation
+# Installation
+
+## Option 1 -- HACS (Recommended)
+
+1.  Open HACS in Home Assistant
+2.  Go to **Integrations**
+3.  Click the three dots (top right) → **Custom repositories**
+4.  Add your repository URL
+5.  Select category: **Integration**
+6.  Click **Add**
+7.  Search for **Gixie Clock Mini**
+8.  Click **Install**
+9.  Restart Home Assistant
+
+After restart:
+
+-   Go to **Settings → Devices & Services**
+-   Click **Add Integration**
+-   Select **Gixie Clock Mini**
+-   Enter the IP address of your clock
+
+------------------------------------------------------------------------
+
+## Option 2 -- Manual Installation
 
 1.  Copy the folder:
 
