@@ -1,0 +1,7 @@
+{
+  "name": "Gixie Clock Mini",
+  "content_in_root": false,
+  "render_readme": true,
+  "country": ["DE"],
+  "homeassistant": "2023.8.0"
+}
