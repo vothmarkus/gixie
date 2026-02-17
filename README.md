@@ -1,6 +1,5 @@
 # Gixie Clock Mini -- Home Assistant Integration
 ![Logo](logo.png)
-<img src="logo.png" alt="Projektlogo" width="150"/>
 
 Custom integration for controlling the Gixie Clock Mini (AliExpress
 variant) via WebSocket from Home Assistant.
