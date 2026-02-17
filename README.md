@@ -33,7 +33,7 @@ clock.
 1.  Open HACS in Home Assistant
 2.  Go to **Integrations**
 3.  Click the three dots (top right) → **Custom repositories**
-4.  Add your repository URL
+4.  Add this repository URL
 5.  Select category: **Integration**
 6.  Click **Add**
 7.  Search for **Gixie Clock Mini**
