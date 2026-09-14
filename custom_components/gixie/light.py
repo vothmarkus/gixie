@@ -32,8 +32,9 @@ class GixieClockLight(CoordinatorEntity, LightEntity):
         self._attr_unique_id = f"{entry_id}_light"
 
     @property
-    def is_on(self) -> bool:
-        return bool(self.coordinator.data.get("power") == 1)
+    def is_on(self) -> bool | None:
+        power = self.coordinator.data.get("power")
+        return None if power is None else power == 1
 
     @property
     def brightness(self):

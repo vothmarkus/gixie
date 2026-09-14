@@ -23,6 +23,8 @@ clock.
 -   DST modes: off / on / auto
 -   Hourly automatic DST sync (auto mode)
 -   Polling every 30 seconds (detects app changes)
+-   One reconnect and retry for failed reads
+-   Partial updates retain the last successfully read values
 -   Immediate UI updates after writes (read-after-write)
 
 ------------------------------------------------------------------------
@@ -204,6 +206,31 @@ Range is clamped to -12 ... +12.
 -   Clock is source of truth at startup
 -   Read-after-write consistency
 -   Fully local communication
+
+------------------------------------------------------------------------
+
+## Version 0.1.4
+
+Reads retry once on a fresh connection after a timeout, connection failure,
+empty response or invalid data. A failed command no longer discards the
+other five readings. Home Assistant keeps the previous value for that
+command; values that have never been read remain unknown.
+
+The integration becomes unavailable only when all six commands fail in
+the current poll, even when cached values exist. It recovers automatically
+when at least one command succeeds. Partial failures are logged at debug
+level; complete outages are reported by Home Assistant.
+
+Writes are sent once. Their read-back uses the same retry as polling.
+Connection setup, sending, receiving and closing have bounded timeouts.
+
+To update an existing installation, download the latest version in HACS
+and restart Home Assistant. No configuration changes are required.
+
+Regression tests cover malformed replies, retries, partial startup,
+retained values, complete outages and recovery, including a local WebSocket
+server test. GitHub Actions runs them against both the minimum supported
+WebSocket library and a current Home Assistant environment.
 
 ------------------------------------------------------------------------
 

@@ -1,0 +1,40 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Minimum websockets
+            python: "3.13"
+            homeassistant: "homeassistant==2025.12.5"
+            websockets: "websockets==10.3"
+          - name: Current Home Assistant and websockets
+            python: "3.14"
+            homeassistant: "homeassistant>=2025.12.5"
+            websockets: "websockets>=14.0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install test dependencies
+        env:
+          HA_REQUIREMENT: ${{ matrix.homeassistant }}
+          WEBSOCKETS_REQUIREMENT: ${{ matrix.websockets }}
+        run: python -m pip install "$HA_REQUIREMENT" "$WEBSOCKETS_REQUIREMENT" pytest pytest-asyncio
+      - name: Compile integration
+        run: python -m compileall -q custom_components/gixie
+      - name: Run regression tests
+        run: python -m pytest -q tests
