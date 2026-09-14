@@ -3,13 +3,20 @@
 import asyncio
 import json
 import logging
-from types import SimpleNamespace
+from types import MappingProxyType, SimpleNamespace
 from unittest.mock import AsyncMock, Mock, call
 
 import pytest
 import pytest_asyncio
 import websockets
+from homeassistant.config_entries import (
+    SOURCE_USER,
+    ConfigEntry,
+    ConfigEntryState,
+    current_entry,
+)
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import frame
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from websockets.exceptions import ConnectionClosedError
@@ -77,10 +84,28 @@ async def coordinator(tmp_path, monkeypatch):
     frame.async_setup(hass)
     device = Mock(spec=GixieClient)
     device.read = AsyncMock(side_effect=lambda cmd: VALUES[cmd])
-    result = GixieCoordinator(hass, device, "test-entry")
+    entry = ConfigEntry(
+        domain="gixie",
+        title="Test clock",
+        data={"host": "clock.test"},
+        options={},
+        source=SOURCE_USER,
+        version=1,
+        minor_version=1,
+        unique_id="clock.test",
+        discovery_keys=MappingProxyType({}),
+        subentries_data=(),
+        state=ConfigEntryState.SETUP_IN_PROGRESS,
+    )
+    token = current_entry.set(entry)
+    try:
+        result = GixieCoordinator(hass, device, entry.entry_id)
+    finally:
+        current_entry.reset(token)
     try:
         yield result
     finally:
+        await result.async_shutdown()
         await hass.async_stop()
 
 
@@ -311,7 +336,8 @@ async def test_total_failure_marks_unavailable_and_then_recovers(coordinator):
 
 async def test_total_first_failure_does_not_create_default_values(coordinator):
     coordinator._client.read.side_effect = UpdateFailed("clock offline")
-    await coordinator.async_refresh()
+    with pytest.raises(ConfigEntryNotReady):
+        await coordinator.async_config_entry_first_refresh()
     assert not coordinator.last_update_success
     assert coordinator.data is None
     assert coordinator._client.read.await_args_list == [call(cmd) for cmd in READ_CMDS]
