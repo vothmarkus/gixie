@@ -10,6 +10,7 @@ import pytest
 import pytest_asyncio
 import websockets
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import frame
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from websockets.exceptions import ConnectionClosedError
 
@@ -70,8 +71,10 @@ def client():
 
 
 @pytest_asyncio.fixture
-async def coordinator(tmp_path):
+async def coordinator(tmp_path, monkeypatch):
     hass = HomeAssistant(str(tmp_path))
+    monkeypatch.setattr(frame, "_hass", SimpleNamespace(hass=None))
+    frame.async_setup(hass)
     device = Mock(spec=GixieClient)
     device.read = AsyncMock(side_effect=lambda cmd: VALUES[cmd])
     result = GixieCoordinator(hass, device, "test-entry")
