@@ -38,3 +38,84 @@ jobs:
         run: python -m compileall -q custom_components/gixie
       - name: Run regression tests
         run: python -m pytest -q tests
+
+  release:
+    name: Publish HACS release
+    needs: regression
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    concurrency:
+      group: gixie-release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare version and release notes
+        id: version
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import re
+
+          version = json.loads(Path('custom_components/gixie/manifest.json').read_text())['version']
+          if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', version):
+              raise SystemExit('Only stable semantic versions may be released')
+          changelog = Path('CHANGELOG.md').read_text()
+          heading = f'## {version}\n'
+          if heading not in changelog:
+              raise SystemExit(f'Missing release notes for {version}')
+          notes = changelog.split(heading, 1)[1].split('\n## ', 1)[0].strip()
+          Path(os.environ['RUNNER_TEMP'], 'gixie-release-notes.md').write_text(notes + '\n')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'version={version}\n')
+          PY
+      - name: Publish version tag and release
+        id: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if gh release view "$RELEASE_VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $RELEASE_VERSION already exists; leaving it unchanged."
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          gh release create "$RELEASE_VERSION" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Gixie Clock Mini $RELEASE_VERSION" \
+            --notes-file "$RUNNER_TEMP/gixie-release-notes.md"
+          echo "created=true" >> "$GITHUB_OUTPUT"
+      - name: Verify the archive URL used by HACS
+        if: steps.publish.outputs.created == 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          curl --fail --location --silent --show-error \
+            --retry 4 --retry-all-errors --retry-delay 2 \
+            --connect-timeout 10 --max-time 30 \
+            "https://github.com/$GITHUB_REPOSITORY/archive/refs/tags/$RELEASE_VERSION.zip" \
+            --output "$RUNNER_TEMP/gixie-release.zip"
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          with ZipFile(Path(os.environ['RUNNER_TEMP'], 'gixie-release.zip')) as archive:
+              manifests = [name for name in archive.namelist()
+                           if name.endswith('/custom_components/gixie/manifest.json')]
+              assert len(manifests) == 1, 'Archive must contain exactly one Gixie manifest'
+              manifest_path = manifests[0]
+              manifest = json.loads(archive.read(manifest_path))
+              assert manifest['version'] == os.environ['RELEASE_VERSION'], 'Wrong archive version'
+              root = manifest_path.split('/', 1)[0]
+              files = [path for path in Path('custom_components/gixie').rglob('*') if path.is_file()]
+              for path in files:
+                  assert archive.read(f'{root}/{path.as_posix()}') == path.read_bytes(), path
+              print(f"HACS archive verified: version {manifest['version']}, {len(files)} integration files")
+          PY

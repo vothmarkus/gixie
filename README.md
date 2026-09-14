@@ -224,8 +224,19 @@ level; complete outages are reported by Home Assistant.
 Writes are sent once. Their read-back uses the same retry as polling.
 Connection setup, sending, receiving and closing have bounded timeouts.
 
-To update an existing installation, download the latest version in HACS
+To update an existing installation, select release **0.1.4** in HACS
 and restart Home Assistant. No configuration changes are required.
+
+If HACS reports `Failed to download zipball` for a URL such as
+`archive/refs/heads/cb14c9e.zip`, refresh the repository information and
+select the numbered release under **Redownload**. That URL incorrectly
+treats a commit hash as a branch name. The release provides a real version
+tag and its corresponding ZIP archive.
+
+New versions listed in `CHANGELOG.md` are published from `main` only after
+both regression test environments pass. The release job then downloads the
+same tag archive used by HACS and compares its integration files with the
+tested checkout.
 
 Regression tests cover malformed replies, retries, partial startup,
 retained values, complete outages and recovery, including a local WebSocket
